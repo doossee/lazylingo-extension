@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  width: 350px;
+  height: 500px;
+  @apply bg-slate-950 text-slate-200;
+}
