@@ -1,5 +1,7 @@
 # lazylingo-extension
 
+[![CI](https://github.com/doossee/lazylingo-extension/actions/workflows/ci.yml/badge.svg)](https://github.com/doossee/lazylingo-extension/actions/workflows/ci.yml)
+
 Chrome MV3 extension for LazyLingo. Save words to your private GitHub vault from anywhere.
 
 ## Setup
