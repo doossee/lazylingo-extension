@@ -25,9 +25,27 @@ function makeArea() {
   };
 }
 
+function makeEvent() {
+  const fns: Array<(...args: unknown[]) => unknown> = [];
+  return {
+    addListener: vi.fn((fn: (...args: unknown[]) => unknown) => fns.push(fn)),
+    removeListener: vi.fn(),
+    hasListener: vi.fn(),
+    _fire: (...args: unknown[]) => fns.forEach((fn) => fn(...args)),
+  };
+}
+
 const localArea = makeArea();
 const syncArea = makeArea();
 const sessionArea = makeArea();
+
+const onInstalled = makeEvent();
+const onStartup = makeEvent();
+const ctxMenuOnClicked = makeEvent();
+
+const ctxMenuCreate = vi.fn();
+const ctxMenuRemoveAll = vi.fn((cb?: () => void) => cb && cb());
+const actionOpenPopup = vi.fn(async () => {});
 
 (globalThis as unknown as { chrome: typeof chrome }).chrome = {
   storage: {
@@ -35,7 +53,28 @@ const sessionArea = makeArea();
     sync: syncArea,
     session: sessionArea,
   },
+  contextMenus: {
+    create: ctxMenuCreate,
+    removeAll: ctxMenuRemoveAll,
+    onClicked: ctxMenuOnClicked,
+  },
+  runtime: {
+    onInstalled,
+    onStartup,
+    getManifest: vi.fn(() => ({ version: "0.2.0" })),
+  },
+  action: { openPopup: actionOpenPopup },
 } as unknown as typeof chrome;
+
+// Expose for tests:
+(globalThis as Record<string, unknown>).__chromeMocks__ = {
+  onInstalled,
+  onStartup,
+  ctxMenuOnClicked,
+  ctxMenuCreate,
+  ctxMenuRemoveAll,
+  actionOpenPopup,
+};
 
 beforeEach(() => {
   // Clear all storage data
@@ -44,4 +83,7 @@ beforeEach(() => {
   for (const k of Object.keys(sessionArea._data)) delete sessionArea._data[k];
   // Reset mock call counts
   vi.clearAllMocks();
+  // Re-wire removeAll so the callback still fires after clearAllMocks
+  ctxMenuRemoveAll.mockImplementation((cb?: () => void) => cb && cb());
+  actionOpenPopup.mockResolvedValue(undefined);
 });
