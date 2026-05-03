@@ -1,141 +1,250 @@
-import { useState, useEffect } from 'react';
-import './index.css';
+import { useEffect, useState } from "react";
+import { initialState, lookup, type Flashcard, type LookupResult } from "@lazylingo/core";
+import { useAuth } from "./shared/stores/auth.store";
+import { useVault } from "./shared/stores/vault.store";
 
-const API_URL = 'http://localhost:3000';
+const SOURCE = "en";
+const TARGET = "ru";
 
-function App() {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+export function App() {
+  const authStatus = useAuth((s) => s.status);
+  const deviceCode = useAuth((s) => s.deviceCode);
+  const error = useAuth((s) => s.error);
+  const signIn = useAuth((s) => s.signIn);
+  const signOut = useAuth((s) => s.signOut);
+  const token = useAuth((s) => s.token);
 
+  const vault = useVault((s) => s.vault);
+  const vaultStatus = useVault((s) => s.status);
+
+  // hydrate auth on mount
   useEffect(() => {
-    // Check for existing token and validate it
-    chrome.storage.local.get(['token'], async (result: { token?: string }) => {
-      if (result.token) {
-        try {
-          // Validate token by fetching profile
-          const response = await fetch(`${API_URL}/auth/profile`, {
-            headers: { 'Authorization': `Bearer ${result.token}` }
-          });
-          
-          if (response.ok) {
-            const userData = await response.json();
-            setToken(result.token);
-            setUser(userData);
-          } else {
-            // Token invalid, clear it
-            chrome.storage.local.remove('token');
-          }
-        } catch (error) {
-          console.error('Token validation failed:', error);
-          chrome.storage.local.remove('token');
-        }
-      }
-      setLoading(false);
-    });
+    void useAuth.getState().hydrate();
+  }, []);
 
-    // Listen for messages from auth callback
-    chrome.runtime.onMessage.addListener((message: any) => {
-      if (message.type === 'AUTH_SUCCESS' && message.token) {
-        setToken(message.token);
-        fetchUserProfile(message.token);
+  // bootstrap vault when signed in
+  useEffect(() => {
+    return useAuth.subscribe((s, prev) => {
+      if (s.status === "signed_in" && prev.status !== "signed_in" && s.token) {
+        void useVault.getState().bootstrap(s.token);
+      }
+      if (s.status === "idle" && prev.status === "signed_in") {
+        useVault.getState().reset();
       }
     });
   }, []);
 
-  const fetchUserProfile = async (authToken: string) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        headers: { 'Authorization': `Bearer ${authToken}` }
-      });
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      }
-    } catch (error) {
-      console.error('Failed to fetch profile:', error);
+  // bootstrap on first hydrate-from-storage
+  useEffect(() => {
+    if (authStatus === "signed_in" && vaultStatus === "idle" && token) {
+      void useVault.getState().bootstrap(token);
     }
-  };
+  }, [authStatus, vaultStatus, token]);
 
-  const handleGoogleLogin = () => {
-    // Open Google OAuth in a new tab
-    chrome.tabs.create({ 
-      url: `${API_URL}/auth/google`,
-      active: true
-    });
-    
-    // Show a message to user
-    alert('Please complete the sign-in in the new tab. The extension will automatically detect when you\'re logged in.');
-  };
+  return (
+    <div className="w-[380px] min-h-[420px] bg-slate-950 text-slate-100 p-4">
+      {authStatus !== "signed_in" ? (
+        <SignInPanel
+          status={authStatus}
+          deviceCode={deviceCode}
+          error={error}
+          signIn={signIn}
+        />
+      ) : (
+        <LookupPanel vault={vault} vaultStatus={vaultStatus} signOut={signOut} />
+      )}
+    </div>
+  );
+}
 
-  const handleLogout = () => {
-    chrome.storage.local.remove('token', () => {
-      setToken(null);
-      setUser(null);
-    });
-  };
-
-  if (loading) {
+function SignInPanel({
+  status,
+  deviceCode,
+  error,
+  signIn,
+}: {
+  status: string;
+  deviceCode: { userCode: string; verificationUri: string } | null;
+  error: string | null;
+  signIn: () => Promise<void>;
+}) {
+  if (status === "awaiting_user" && deviceCode) {
     return (
-      <div className="p-6 text-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <div className="flex flex-col items-center gap-3 p-2">
+        <h1 className="text-lg font-semibold">Authorize on GitHub</h1>
+        <p className="text-xs text-slate-400 text-center">Enter this code:</p>
+        <code className="text-2xl font-mono tracking-widest bg-slate-900 px-3 py-2 rounded">
+          {deviceCode.userCode}
+        </code>
+        <a
+          href={deviceCode.verificationUri}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium"
+        >
+          Open GitHub
+        </a>
+        <p className="text-xs text-slate-500">Waiting…</p>
       </div>
     );
   }
 
-  if (token && user) {
+  if (status === "error") {
     return (
-      <div className="p-6 text-center space-y-4">
-        <h1 className="text-xl font-bold text-violet-400">LazyLingo</h1>
-        
-        <div className="p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400 text-sm">
-          <div className="flex items-center justify-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span>Connected as {user.email}</span>
-          </div>
-        </div>
-        
-        <div className="text-xs text-slate-500 bg-slate-800/50 p-3 rounded">
-          Select any text on a webpage to add it to your Inbox deck
-        </div>
-        
-        <button 
-          onClick={handleLogout}
-          className="w-full py-2 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 text-sm transition-colors"
-        >
-          Sign Out
+      <div className="flex flex-col gap-3 p-2">
+        <h1 className="text-lg font-semibold text-rose-400">Sign-in failed</h1>
+        <p className="text-xs text-slate-400">{error}</p>
+        <button onClick={() => signIn()} className="rounded bg-slate-700 px-3 py-1 text-sm">
+          Try again
         </button>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="text-center space-y-2">
-         <h1 className="text-2xl font-bold text-violet-500">LazyLingo</h1>
-         <p className="text-slate-500 text-xs">Instantly add words to your learning deck</p>
-      </div>
-
-      <div className="space-y-4">
-        <button 
-          onClick={handleGoogleLogin}
-          className="w-full py-3 bg-white hover:bg-gray-50 rounded-lg text-gray-700 font-medium transition-colors flex items-center justify-center gap-3 shadow-md hover:shadow-lg"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          Sign in with Google
-        </button>
-
-        <p className="text-xs text-center text-slate-500">
-          Sign in to start adding words from any webpage
-        </p>
-      </div>
+    <div className="flex flex-col items-center gap-3 p-2">
+      <h1 className="text-lg font-semibold">LazyLingo</h1>
+      <p className="text-xs text-slate-400 text-center">
+        Sign in to save words to your vault.
+      </p>
+      <button
+        onClick={() => signIn()}
+        className="rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium"
+      >
+        Sign in with GitHub
+      </button>
     </div>
-  )
+  );
 }
 
-export default App
+function LookupPanel({
+  vault,
+  vaultStatus,
+  signOut,
+}: {
+  vault: ReturnType<typeof useVault.getState>["vault"];
+  vaultStatus: string;
+  signOut: () => Promise<void>;
+}) {
+  const [word, setWord] = useState("");
+  const [result, setResult] = useState<LookupResult | null>(null);
+  const [phase, setPhase] = useState<"idle" | "looking_up" | "previewing" | "saving" | "saved" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  if (vaultStatus === "bootstrapping") {
+    return <p className="text-sm text-slate-400">Setting up your vault…</p>;
+  }
+  if (vaultStatus === "error") {
+    return <p className="text-sm text-rose-400">Vault setup failed.</p>;
+  }
+  if (!vault) {
+    return <p className="text-sm text-slate-400">Loading vault…</p>;
+  }
+
+  async function onLookup(e: React.FormEvent) {
+    e.preventDefault();
+    if (!word.trim()) return;
+    setPhase("looking_up");
+    setError(null);
+    try {
+      const r = await lookup(word.trim(), SOURCE, TARGET, new Date().toISOString());
+      setResult(r);
+      setPhase("previewing");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("error");
+    }
+  }
+
+  async function onSave() {
+    if (!result || !vault) return;
+    setPhase("saving");
+    const now = new Date().toISOString();
+    const card: Flashcard = {
+      word: result.word,
+      sourceLang: result.sourceLang,
+      targetLang: result.targetLang,
+      decks: [],
+      lookup: result,
+      srs: initialState(now),
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      await vault.saveCard(card);
+      setPhase("saved");
+      setWord("");
+      setResult(null);
+      setTimeout(() => setPhase("idle"), 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("error");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex justify-between items-center">
+        <h1 className="text-sm text-slate-400">LazyLingo</h1>
+        <button onClick={signOut} className="text-xs text-slate-500 hover:text-slate-300">
+          Sign out
+        </button>
+      </div>
+
+      <form onSubmit={onLookup} className="flex gap-2">
+        <input
+          aria-label="Word"
+          type="text"
+          value={word}
+          onChange={(e) => setWord(e.target.value)}
+          placeholder="Type a word…"
+          className="flex-1 bg-slate-900 text-slate-100 rounded px-2 py-1 text-sm"
+          autoFocus
+        />
+        <button
+          type="submit"
+          disabled={phase === "looking_up"}
+          className="rounded bg-emerald-500 px-3 text-slate-900 text-sm font-medium disabled:opacity-50"
+        >
+          {phase === "looking_up" ? "…" : "Look up"}
+        </button>
+      </form>
+
+      {phase === "saved" && (
+        <p className="text-xs text-emerald-400">Saved.</p>
+      )}
+
+      {error && phase === "error" && <p className="text-xs text-rose-400">{error}</p>}
+
+      {result && phase === "previewing" && (
+        <div className="border border-slate-800 rounded p-2 text-sm space-y-2 max-h-[280px] overflow-y-auto">
+          <header>
+            <h2 className="font-semibold text-slate-100">{result.word}</h2>
+            {result.phonetic && <span className="text-xs text-slate-400">{result.phonetic}</span>}
+          </header>
+          {result.posSections.map((section) => (
+            <section key={section.pos}>
+              <h3 className="text-xs uppercase tracking-wider text-slate-500">{section.pos}</h3>
+              <ul className="space-y-1">
+                {section.senses.map((sense, i) => (
+                  <li key={i}>
+                    <span className="text-slate-100">{sense.definition}</span>
+                    {sense.translation && (
+                      <div className="text-emerald-400 ml-3">→ {sense.translation}</div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          <button
+            onClick={onSave}
+            className="w-full rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium mt-2"
+          >
+            Save
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
