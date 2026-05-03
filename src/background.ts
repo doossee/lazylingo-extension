@@ -1,29 +1,7 @@
-console.log("LazyLingo Background Service Worker Started");
-
+// Service worker placeholder. The popup carries all UI/auth/storage logic in v0.2.
+// Future versions will use this for context-menu / right-click capture.
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("LazyLingo Extension Installed");
+  console.log("LazyLingo extension installed");
 });
 
-// Handle auth token storage from callback page
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "STORE_TOKEN") {
-    chrome.storage.local.set(
-      {
-        token: message.token,
-        refreshToken: message.refreshToken,
-      },
-      () => {
-        console.log("Token stored successfully");
-
-        // Notify popup
-        chrome.runtime.sendMessage({
-          type: "AUTH_SUCCESS",
-          token: message.token,
-        });
-
-        sendResponse({ success: true });
-      }
-    );
-    return true; // Keep message channel open for async response
-  }
-});
+export {};
