@@ -40,6 +40,7 @@ export const useVault = create<VaultState>((set) => ({
       if (!userRes.ok) throw new Error(`/user ${userRes.status}`);
       const { login } = (await userRes.json()) as { login: string };
 
+      let defaultBranch: string | undefined;
       const probeRes = await gh(token, `/repos/${login}/${VAULT_REPO}`);
       if (probeRes.status === 404) {
         const createRes = await gh(token, "/user/repos", {
@@ -48,11 +49,16 @@ export const useVault = create<VaultState>((set) => ({
           body: JSON.stringify({ name: VAULT_REPO, private: true, auto_init: true }),
         });
         if (!createRes.ok) throw new Error(`create vault ${createRes.status}`);
-      } else if (!probeRes.ok) {
+        const created = (await createRes.json()) as { default_branch?: string };
+        defaultBranch = created.default_branch;
+      } else if (probeRes.ok) {
+        const probed = (await probeRes.json()) as { default_branch?: string };
+        defaultBranch = probed.default_branch;
+      } else {
         throw new Error(`probe vault ${probeRes.status}`);
       }
 
-      const cfg: VaultConfig = { owner: login, repo: VAULT_REPO, token, branch: "main" };
+      const cfg: VaultConfig = { owner: login, repo: VAULT_REPO, token, branch: defaultBranch ?? "main" };
       set({ vault: new Vault(cfg), owner: login, status: "ready" });
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
