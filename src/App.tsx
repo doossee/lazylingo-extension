@@ -2,9 +2,7 @@ import { useEffect, useState } from "react";
 import { initialState, lookup, type Flashcard, type LookupResult } from "@lazylingo/core";
 import { useAuth } from "./shared/stores/auth.store";
 import { useVault } from "./shared/stores/vault.store";
-
-const SOURCE = "en";
-const TARGET = "ru";
+import { useSettings } from "./shared/stores/settings.store";
 
 export function App() {
   const authStatus = useAuth((s) => s.status);
@@ -20,6 +18,11 @@ export function App() {
   // hydrate auth on mount
   useEffect(() => {
     void useAuth.getState().hydrate();
+  }, []);
+
+  // hydrate settings on mount
+  useEffect(() => {
+    void useSettings.getState().hydrate();
   }, []);
 
   // bootstrap vault when signed in
@@ -126,6 +129,10 @@ function LookupPanel({
   vaultStatus: string;
   signOut: () => Promise<void>;
 }) {
+  const sourceLang = useSettings((s) => s.sourceLang);
+  const targetLang = useSettings((s) => s.targetLang);
+  const setTargetLang = useSettings((s) => s.setTargetLang);
+
   const [word, setWord] = useState("");
   const [result, setResult] = useState<LookupResult | null>(null);
   const [phase, setPhase] = useState<"idle" | "looking_up" | "previewing" | "saving" | "saved" | "error">("idle");
@@ -136,7 +143,7 @@ function LookupPanel({
     setPhase("looking_up");
     setError(null);
     try {
-      const r = await lookup(w.trim(), SOURCE, TARGET, new Date().toISOString());
+      const r = await lookup(w.trim(), sourceLang, targetLang, new Date().toISOString());
       setResult(r);
       setPhase("previewing");
     } catch (err) {
@@ -206,6 +213,19 @@ function LookupPanel({
     <div className="flex flex-col gap-3">
       <div className="flex justify-between items-center">
         <h1 className="text-sm text-slate-400">LazyLingo</h1>
+        <select
+          aria-label="Target language"
+          value={targetLang}
+          onChange={(e) => void setTargetLang(e.target.value)}
+          className="bg-slate-900 text-slate-100 rounded text-xs px-1 py-0.5"
+        >
+          <option value="ru">RU</option>
+          <option value="es">ES</option>
+          <option value="uz">UZ</option>
+          <option value="fr">FR</option>
+          <option value="de">DE</option>
+          <option value="ja">JA</option>
+        </select>
         <button onClick={signOut} className="text-xs text-slate-500 hover:text-slate-300">
           Sign out
         </button>
