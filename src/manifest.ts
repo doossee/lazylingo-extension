@@ -5,7 +5,7 @@ export default defineManifest({
   description: "Add words to your LazyLingo vault on GitHub",
   version: "0.2.0",
   manifest_version: 3,
-  permissions: ["storage"],
+  permissions: ["storage", "contextMenus"],
   host_permissions: [
     "https://api.github.com/*",
     "https://github.com/login/*",

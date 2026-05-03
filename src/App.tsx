@@ -131,6 +131,36 @@ function LookupPanel({
   const [phase, setPhase] = useState<"idle" | "looking_up" | "previewing" | "saving" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
+  async function runLookup(w: string) {
+    if (!w.trim()) return;
+    setPhase("looking_up");
+    setError(null);
+    try {
+      const r = await lookup(w.trim(), SOURCE, TARGET, new Date().toISOString());
+      setResult(r);
+      setPhase("previewing");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setPhase("error");
+    }
+  }
+
+  // Check for a pending word set by the context-menu background script.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stored = await chrome.storage.local.get("lazylingo:pending-word");
+      const pending = stored["lazylingo:pending-word"];
+      if (cancelled || !pending || typeof pending !== "string") return;
+      await chrome.storage.local.remove("lazylingo:pending-word");
+      setWord(pending);
+      await runLookup(pending);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   if (vaultStatus === "bootstrapping") {
     return <p className="text-sm text-slate-400">Setting up your vault…</p>;
   }
@@ -143,17 +173,7 @@ function LookupPanel({
 
   async function onLookup(e: React.FormEvent) {
     e.preventDefault();
-    if (!word.trim()) return;
-    setPhase("looking_up");
-    setError(null);
-    try {
-      const r = await lookup(word.trim(), SOURCE, TARGET, new Date().toISOString());
-      setResult(r);
-      setPhase("previewing");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setPhase("error");
-    }
+    await runLookup(word);
   }
 
   async function onSave() {
