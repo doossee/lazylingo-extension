@@ -258,9 +258,19 @@ function LookupPanel({
 
       {result && phase === "previewing" && (
         <div className="border border-slate-800 rounded p-2 text-sm space-y-2 max-h-[280px] overflow-y-auto">
-          <header>
+          <header className="flex items-center gap-2">
             <h2 className="font-semibold text-slate-100">{result.word}</h2>
             {result.phonetic && <span className="text-xs text-slate-400">{result.phonetic}</span>}
+            {result.audioUrl && (
+              <button
+                type="button"
+                aria-label="Play pronunciation"
+                onClick={() => void new Audio(result.audioUrl).play().catch(() => {})}
+                className="text-slate-400 hover:text-emerald-400 text-base"
+              >
+                🔉
+              </button>
+            )}
           </header>
           {result.posSections.map((section) => (
             <section key={section.pos}>
