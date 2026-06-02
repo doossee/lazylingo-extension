@@ -32,9 +32,10 @@ export const useAuth = create<AuthState>((set, get) => ({
     if (get().status === "awaiting_user") return;
     set({ status: "idle", error: null });
     try {
-      const dc = await requestDeviceCode(env.githubClientId, "repo");
+      const proxy = env.githubAuthProxy || undefined;
+      const dc = await requestDeviceCode(env.githubClientId, "repo", proxy);
       set({ status: "awaiting_user", deviceCode: dc });
-      const token = await pollForToken(env.githubClientId, dc.deviceCode, dc.interval);
+      const token = await pollForToken(env.githubClientId, dc.deviceCode, dc.interval, undefined, proxy);
       await chrome.storage.local.set({ [TOKEN_KEY]: token });
       set({ status: "signed_in", token, deviceCode: null });
     } catch (e) {

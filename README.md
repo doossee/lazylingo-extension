@@ -13,6 +13,12 @@ Chrome MV3 extension for LazyLingo. Save words to your private GitHub vault from
 5. Chrome → `chrome://extensions` → enable Developer Mode → Load unpacked → select `dist/`
 6. Click the extension icon in the toolbar → sign in with GitHub.
 
+## CORS proxy
+
+GitHub's Device Flow endpoints don't support browser CORS, so the popup's sign-in can't call them directly from extension contexts. Deploy the Cloudflare Worker from `lazylingo-app/worker/` (one-time, shared with the app) and set `VITE_GITHUB_AUTH_PROXY` to its URL.
+
+See `../lazylingo-app/worker/README.md` for the 3-step deploy.
+
 ## Storage
 
 Token: `chrome.storage.local["lazylingo:gh-token"]`. Cleared on sign-out.

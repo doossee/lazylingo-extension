@@ -56,6 +56,8 @@ describe("auth.store", () => {
     expect(useAuth.getState().token).toBe("gh-token-xyz");
     const stored = (await chrome.storage.local.get(TOKEN_KEY))[TOKEN_KEY];
     expect(stored).toBe("gh-token-xyz");
+    expect(requestDeviceCode).toHaveBeenCalledWith(expect.any(String), "repo", undefined);
+    expect(pollForToken).toHaveBeenCalledWith(expect.any(String), "device-code-123", 5, undefined, undefined);
   });
 
   it("signOut clears storage and resets state", async () => {
@@ -68,6 +70,28 @@ describe("auth.store", () => {
     expect(useAuth.getState().token).toBeNull();
     const stored = (await chrome.storage.local.get(TOKEN_KEY))[TOKEN_KEY];
     expect(stored).toBeUndefined();
+  });
+
+  it("forwards githubAuthProxy to the device-flow functions when set", async () => {
+    const { env } = await import("../env");
+    const original = env.githubAuthProxy;
+    (env as unknown as { githubAuthProxy: string }).githubAuthProxy = "https://proxy.example.com";
+
+    vi.mocked(requestDeviceCode).mockResolvedValue({
+      deviceCode: "DC",
+      userCode: "X",
+      verificationUri: "u",
+      interval: 1,
+      expiresIn: 900,
+    });
+    vi.mocked(pollForToken).mockResolvedValue("TOKEN");
+
+    await useAuth.getState().signIn();
+
+    expect(requestDeviceCode).toHaveBeenCalledWith(expect.any(String), "repo", "https://proxy.example.com");
+    expect(pollForToken).toHaveBeenCalledWith(expect.any(String), "DC", 1, undefined, "https://proxy.example.com");
+
+    (env as unknown as { githubAuthProxy: string }).githubAuthProxy = original;
   });
 
   it("pollForToken error sets error state", async () => {
