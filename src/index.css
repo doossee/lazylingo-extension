@@ -2,8 +2,42 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Lamplight palette — shared with lazylingo-app (see DESIGN.md) */
+  --color-background: oklch(0.17 0.006 70);
+  --color-foreground: oklch(0.95 0.007 80);
+  --color-card: oklch(0.205 0.007 70);
+  --color-muted: oklch(0.26 0.008 70);
+  --color-muted-foreground: oklch(0.72 0.014 75);
+  --color-secondary: oklch(0.26 0.008 70);
+  --color-secondary-foreground: oklch(0.95 0.007 80);
+  --color-border: oklch(0.3 0.012 70);
+  --color-input: oklch(0.32 0.012 70);
+  --color-ring: oklch(0.7 0.17 40);
+  --color-primary: oklch(0.7 0.17 40);
+  --color-primary-foreground: oklch(0.18 0.03 45);
+  --color-destructive: oklch(0.62 0.17 27);
+  --color-success: oklch(0.72 0.12 155);
+}
+
 body {
-  width: 350px;
+  width: 380px;
   height: 500px;
-  @apply bg-slate-950 text-slate-200;
+  @apply bg-background text-foreground;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
