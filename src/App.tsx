@@ -45,14 +45,9 @@ export function App() {
   }, [authStatus, vaultStatus, token]);
 
   return (
-    <div className="w-[380px] min-h-[420px] bg-slate-950 text-slate-100 p-4">
+    <div className="min-h-[420px] w-[380px] bg-background p-4 text-foreground">
       {authStatus !== "signed_in" ? (
-        <SignInPanel
-          status={authStatus}
-          deviceCode={deviceCode}
-          error={error}
-          signIn={signIn}
-        />
+        <SignInPanel status={authStatus} deviceCode={deviceCode} error={error} signIn={signIn} />
       ) : (
         <LookupPanel vault={vault} vaultStatus={vaultStatus} signOut={signOut} />
       )}
@@ -75,19 +70,19 @@ function SignInPanel({
     return (
       <div className="flex flex-col items-center gap-3 p-2">
         <h1 className="text-lg font-semibold">Authorize on GitHub</h1>
-        <p className="text-xs text-slate-400 text-center">Enter this code:</p>
-        <code className="text-2xl font-mono tracking-widest bg-slate-900 px-3 py-2 rounded">
+        <p className="text-center text-xs text-muted-foreground">Enter this code:</p>
+        <code className="rounded-md border border-border bg-card px-3 py-2 font-mono text-2xl tracking-widest text-foreground">
           {deviceCode.userCode}
         </code>
         <a
           href={deviceCode.verificationUri}
           target="_blank"
           rel="noreferrer noopener"
-          className="rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium"
+          className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
         >
           Open GitHub
         </a>
-        <p className="text-xs text-slate-500">Waiting…</p>
+        <p className="text-xs text-muted-foreground">Waiting…</p>
       </div>
     );
   }
@@ -95,9 +90,12 @@ function SignInPanel({
   if (status === "error") {
     return (
       <div className="flex flex-col gap-3 p-2">
-        <h1 className="text-lg font-semibold text-rose-400">Sign-in failed</h1>
-        <p className="text-xs text-slate-400">{error}</p>
-        <button onClick={() => signIn()} className="rounded bg-slate-700 px-3 py-1 text-sm">
+        <h1 className="text-lg font-semibold text-destructive">Sign-in failed</h1>
+        <p className="text-xs text-muted-foreground">{error}</p>
+        <button
+          onClick={() => signIn()}
+          className="inline-flex h-9 items-center justify-center rounded-md bg-secondary px-3 text-sm font-medium text-secondary-foreground transition-colors hover:opacity-90"
+        >
           Try again
         </button>
       </div>
@@ -105,14 +103,12 @@ function SignInPanel({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 p-2">
-      <h1 className="text-lg font-semibold">LazyLingo</h1>
-      <p className="text-xs text-slate-400 text-center">
-        Sign in to save words to your vault.
-      </p>
+    <div className="flex flex-col items-center gap-3 p-2 text-center">
+      <h1 className="font-serif text-2xl text-foreground">LazyLingo</h1>
+      <p className="text-xs text-muted-foreground">Sign in to save words to your vault.</p>
       <button
         onClick={() => signIn()}
-        className="rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium"
+        className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
       >
         Sign in with GitHub
       </button>
@@ -166,16 +162,17 @@ function LookupPanel({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount to pick up a context-menu word
   }, []);
 
   if (vaultStatus === "bootstrapping") {
-    return <p className="text-sm text-slate-400">Setting up your vault…</p>;
+    return <p className="text-sm text-muted-foreground">Setting up your vault…</p>;
   }
   if (vaultStatus === "error") {
-    return <p className="text-sm text-rose-400">Vault setup failed.</p>;
+    return <p className="text-sm text-destructive">Vault setup failed.</p>;
   }
   if (!vault) {
-    return <p className="text-sm text-slate-400">Loading vault…</p>;
+    return <p className="text-sm text-muted-foreground">Loading vault…</p>;
   }
 
   async function onLookup(e: React.FormEvent) {
@@ -211,13 +208,13 @@ function LookupPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex justify-between items-center">
-        <h1 className="text-sm text-slate-400">LazyLingo</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="font-serif text-base text-foreground">LazyLingo</h1>
         <select
           aria-label="Target language"
           value={targetLang}
           onChange={(e) => void setTargetLang(e.target.value)}
-          className="bg-slate-900 text-slate-100 rounded text-xs px-1 py-0.5"
+          className="rounded-md border border-border bg-input px-1 py-0.5 text-xs text-foreground"
         >
           <option value="ru">RU</option>
           <option value="es">ES</option>
@@ -226,7 +223,10 @@ function LookupPanel({
           <option value="de">DE</option>
           <option value="ja">JA</option>
         </select>
-        <button onClick={signOut} className="text-xs text-slate-500 hover:text-slate-300">
+        <button
+          onClick={signOut}
+          className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
           Sign out
         </button>
       </div>
@@ -238,35 +238,33 @@ function LookupPanel({
           value={word}
           onChange={(e) => setWord(e.target.value)}
           placeholder="Type a word…"
-          className="flex-1 bg-slate-900 text-slate-100 rounded px-2 py-1 text-sm"
+          className="h-8 flex-1 rounded-md border border-border bg-input px-2 text-sm text-foreground placeholder:text-muted-foreground"
           autoFocus
         />
         <button
           type="submit"
           disabled={phase === "looking_up"}
-          className="rounded bg-emerald-500 px-3 text-slate-900 text-sm font-medium disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-50"
         >
           {phase === "looking_up" ? "…" : "Look up"}
         </button>
       </form>
 
-      {phase === "saved" && (
-        <p className="text-xs text-emerald-400">Saved.</p>
-      )}
+      {phase === "saved" && <p className="text-xs text-success">Saved.</p>}
 
-      {error && phase === "error" && <p className="text-xs text-rose-400">{error}</p>}
+      {error && phase === "error" && <p className="text-xs text-destructive">{error}</p>}
 
       {result && phase === "previewing" && (
-        <div className="border border-slate-800 rounded p-2 text-sm space-y-2 max-h-[280px] overflow-y-auto">
+        <div className="max-h-[280px] space-y-2 overflow-y-auto rounded-md border border-border p-2 text-sm">
           <header className="flex items-center gap-2">
-            <h2 className="font-semibold text-slate-100">{result.word}</h2>
-            {result.phonetic && <span className="text-xs text-slate-400">{result.phonetic}</span>}
+            <h2 className="font-serif text-lg text-foreground">{result.word}</h2>
+            {result.phonetic && <span className="text-xs text-muted-foreground">{result.phonetic}</span>}
             {result.audioUrl && (
               <button
                 type="button"
                 aria-label="Play pronunciation"
                 onClick={() => void new Audio(result.audioUrl).play().catch(() => {})}
-                className="text-slate-400 hover:text-emerald-400 text-base"
+                className="text-base text-muted-foreground transition-colors hover:text-primary"
               >
                 🔉
               </button>
@@ -274,14 +272,12 @@ function LookupPanel({
           </header>
           {result.posSections.map((section) => (
             <section key={section.pos}>
-              <h3 className="text-xs uppercase tracking-wider text-slate-500">{section.pos}</h3>
+              <h3 className="text-xs uppercase tracking-wider text-muted-foreground">{section.pos}</h3>
               <ul className="space-y-1">
                 {section.senses.map((sense, i) => (
                   <li key={i}>
-                    <span className="text-slate-100">{sense.definition}</span>
-                    {sense.translation && (
-                      <div className="text-emerald-400 ml-3">→ {sense.translation}</div>
-                    )}
+                    <span className="text-foreground">{sense.definition}</span>
+                    {sense.translation && <div className="ml-3 text-primary">→ {sense.translation}</div>}
                   </li>
                 ))}
               </ul>
@@ -289,7 +285,7 @@ function LookupPanel({
           ))}
           <button
             onClick={onSave}
-            className="w-full rounded bg-emerald-500 px-3 py-1 text-slate-900 text-sm font-medium mt-2"
+            className="mt-2 inline-flex h-8 w-full items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
             Save
           </button>
