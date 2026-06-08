@@ -3,6 +3,7 @@ import { initialState, lookup, type Flashcard, type LookupResult } from "@lazyli
 import { useAuth } from "./shared/stores/auth.store";
 import { useVault } from "./shared/stores/vault.store";
 import { useSettings } from "./shared/stores/settings.store";
+import { humanizeError } from "./shared/humanize-error";
 
 export function App() {
   const authStatus = useAuth((s) => s.status);
@@ -91,7 +92,7 @@ function SignInPanel({
     return (
       <div className="flex flex-col gap-3 p-2">
         <h1 className="text-lg font-semibold text-destructive">Sign-in failed</h1>
-        <p className="text-xs text-muted-foreground">{error}</p>
+        <p className="text-xs text-muted-foreground">{humanizeError(error)}</p>
         <button
           onClick={() => signIn()}
           className="inline-flex h-9 items-center justify-center rounded-md bg-secondary px-3 text-sm font-medium text-secondary-foreground transition-colors hover:opacity-90"
@@ -252,7 +253,7 @@ function LookupPanel({
 
       {phase === "saved" && <p className="text-xs text-success">Saved.</p>}
 
-      {error && phase === "error" && <p className="text-xs text-destructive">{error}</p>}
+      {error && phase === "error" && <p className="text-xs text-destructive">{humanizeError(error)}</p>}
 
       {result && phase === "previewing" && (
         <div className="max-h-[280px] space-y-2 overflow-y-auto rounded-md border border-border p-2 text-sm">
